@@ -1,0 +1,16 @@
+---
+title: "Exploratory Data Analysis on TTC Transit Delay Data - Potential Correlations Between Specific Time Periods and Delay Frequencies"
+author: "Zhaotian Li, Yonghao Li, Hongtianxu Hua"
+date: "8 Feb, 2020"
+output: pdf_document
+---
+
+```{r, setup, include=FALSE}
+
+library(tidyverse)
+
+data <- read_csv("./survey_results_public.csv")
+
+soeth
+```
+
