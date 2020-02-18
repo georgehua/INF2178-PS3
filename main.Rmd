@@ -1,16 +1,82 @@
 ---
-title: "Exploratory Data Analysis on TTC Transit Delay Data - Potential Correlations Between Specific Time Periods and Delay Frequencies"
-author: "Zhaotian Li, Yonghao Li, Hongtianxu Hua"
-date: "8 Feb, 2020"
+title: "An Informative Title"
+author: "Group Alderwood: Zhaotian Li, Yonghao Li, Hongtianxu Hua"
+date: "23 Feb, 2020"
 output: pdf_document
 ---
 
 ```{r, setup, include=FALSE}
 
 library(tidyverse)
+library(skimr)
 
 data <- read_csv("./survey_results_public.csv")
 
-soeth
+skim(data$CompTotal)
 ```
 
+## Abstract
+
+Format: The abstract answers: what was done, what was found, and why this matters (all at a high level).
+-> What constitutes an appropriate abstract was discussed in the Week 1 Lecture. You can also see examples in the readings and other material posted to Quercus.
+-> Abstracts are important and if you cannot write a good abstract then you will struggle to get people to read your work.
+-> If your abstract is longer than four sentences then you need to think a lot about whether it is too long. It may be fine (there are always exceptions) but you should probably have a good reason.
+
+## Introduction
+
+Content: An introduction section is self-contained and tells a reader everything they need to know, including putting it into a broader context.
+-> Your introduction should provide a bit of broader context to motivate the reader, as well as providing a bit more detail about what you're interested in, what you did, what you found, why it's important, etc.
+-> A reader should be able to read only your introduction and have a good idea about the research that you carried out.
+-> It would be rare that you would have tables or figures in your introduction (again there are always exceptions but think deeply about whether yours is one), and it would be very surprising if your introduction were not longer than your abstract.
+-> When conducting quantitative analysis, you are trying to convince the reader of a story. The introduction is when you will have the reader's undivided attention, so you need to not waste this opportunity.
+
+## Research Question
+
+This criterion is linked to a Learning OutcomeContent: The research question/s that is/are of interest is/are clear, and appropriate to the dataset. The significance, feasibility, relevance, and/or other features as appropriate to the dataset and context, of the research question/s are discussed.
+-> Please note the drop-off in possible marks for not doing this appropriately.
+
+## Dataset
+
+This criterion is linked to a Learning OutcomeContent: The dataset is well-explained given the research question/s that is of interest.
+-> This will likely require summary statistics, tables, graphs, images, or statistical analysis.
+-> Show the reader the dataset by plotting the data. Talk about it. Explain it. It is this dataset that will allow you to tell your story, so if the reader isn't comfortable with it then they will be difficult to convince.
+-> Note this is different to EDA which is a more free-flowing narrative - instead this section must tell the reader exactly what they need to know about your dataset - not everything that you tried, or the journey you went on.
+-> Please note the drop-off in possible marks for not doing this appropriately.
+
+## Model
+
+Content: Linear regression or classification such as logistic regression or k-means has been used appropriately to help answer the research question/s with support from equations, tables, figures, etc as needed.
+-> 'Appropriately' means:
+1) The motivation for the analysis method is clear and suitable given the research question/s and dataset.
+2) Assumptions or pre-requisites of the analysis method have been detailed and satisfied.
+3) The analysis method has been briefly explained in plain language for readers who might not be familiar with it (see example added to Week 7 readings).
+4) The model is clearly stated and explained.
+5) The analysis has been conducted in an convincing way.
+6) The results of the analysis are presented in a credible way.
+7) The results of the analysis are discussed in a way that supports the story being told, including mentioning and attempting to justify unexpected or counter-intuitive results.
+8) Statistical uncertainty is discussed carefully and appropriately.
+9) Necessary tests are conducted.
+10) Weaknesses or shortcoming of the analysis method or results are noted and contextualized, and ways of proceeding are suggested.
+
+
+## Ethical Issues
+
+This criterion is linked to a Learning OutcomeContent: Ethical issues around the research questions and/or dataset and/or analysis are discussed.
+
+## Shortcomings and Weaknesses
+
+Content: Shortcomings or weaknesses of the research questions and/or dataset and/or analysis are discussed.
+
+\newpage
+## Appendix 1
+
+Students who obtained written approval to use their own dataset should note this in an appendix that specifies the email address of the person who sent the email and the date the email was sent.
+ 
+george.hua@mail.utoronto.ca
+
+Date: 18 Feb, 2020
+
+Name: Hongtianxu Hua (George)
+
+\newpage
+## Appendix 2
