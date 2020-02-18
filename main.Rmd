@@ -13,6 +13,14 @@ library(skimr)
 data <- read_csv("./survey_results_public.csv")
 
 skim(data$CompTotal)
+
+sm_dt <- data %>%
+  filter(Country == "United States",
+         Employment == "Employed full-time") %>%
+  sample_n(1000)
+
+print("test")
+
 ```
 
 ## Abstract
