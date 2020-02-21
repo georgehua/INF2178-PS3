@@ -9,6 +9,7 @@ output: pdf_document
 
 library(tidyverse)
 library(skimr)
+library(splitstackshape)
 
 data <- read_csv("./survey_results_public.csv")
 
@@ -17,9 +18,20 @@ skim(data$CompTotal)
 sm_dt <- data %>%
   filter(Country == "United States",
          Employment == "Employed full-time") %>%
-  sample_n(1000)
+  sample_n(20)
 
-print("I created a conflit")
+# reference: https://stackoverflow.com/questions/36209001/how-to-count-total-character-occurence-in-data-frame-and-add-column-using-mutate
+# issue: Language worked with column contains a "other(s)" string
+test <- sm_dt %>%
+  mutate(langs =strsplit(LanguageWorkedWith, ";")) %>%
+  unnest(cols = c(langs)) %>%
+  group_by(LanguageWorkedWith) %>%
+  mutate(LanguageWorkedWith_count=n()) %>%
+  select(-langs) %>%
+  distinct()
+
+# Task
+# create a column only LanguageWorkedWith_count contains a specific language (Ex. R langauge)
 
 ```
 
