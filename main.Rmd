@@ -21,14 +21,17 @@ sm_dt <- data %>%
   sample_n(20)
 
 # reference: https://stackoverflow.com/questions/36209001/how-to-count-total-character-occurence-in-data-frame-and-add-column-using-mutate
-# issue: Language worked with column contains a "other(s)" string
+# issue: Language worked with column contains a "Other(s)" string, removed
 test <- sm_dt %>%
-  mutate(langs =strsplit(LanguageWorkedWith, ";")) %>%
+  mutate(langs = strsplit(LanguageWorkedWith, ";")) %>%
   unnest(cols = c(langs)) %>%
   group_by(LanguageWorkedWith) %>%
+  filter(langs != "Other(s):") %>%
   mutate(LanguageWorkedWith_count=n()) %>%
   select(-langs) %>%
-  distinct()
+  distinct() %>%
+  select(LanguageWorkedWith, LanguageWorkedWith_count) 
+  
 
 # Task
 # create a column only LanguageWorkedWith_count contains a specific language (Ex. R langauge)
