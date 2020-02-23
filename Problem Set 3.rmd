@@ -1,0 +1,151 @@
+---
+title: "An Informative Title"
+author: "Group Alderwood: Zhaotian Li, Yonghao Li, Hongtianxu Hua"
+date: "23 Feb, 2020"
+output: pdf_document
+---
+
+
+## 1. Abstract
+
+  
+## 2. Introduction
+
+
+## Research Question
+
+This criterion is linked to a Learning OutcomeContent: The research question/s that is/are of interest is/are clear, and appropriate to the dataset. The significance, feasibility, relevance, and/or other features as appropriate to the dataset and context, of the research question/s are discussed.
+-> Please note the drop-off in possible marks for not doing this appropriately.
+
+## Dataset
+
+
+```{r, setup, include=FALSE}
+
+# library(opendatatoronto)
+library(tidyverse)
+library(stringr)
+library(skimr)
+library(janitor)
+library(readr)
+library(lubridate)
+library(psych)
+library(kableExtra)
+
+```
+
+
+```{r}
+sod_survey <- read_csv("./survey_results_public.csv") %>% 
+  filter(
+    Country == "United States",
+    Employment == "Employed full-time",
+    ## Remove atypical salary ranges
+    ConvertedComp > 3e4,
+    ConvertedComp < 2e6
+  )
+
+sod_survey %>% summarise_all(.funs = funs(sum(is.na(.))))
+
+atypical_employment <- sod_survey %>%
+  filter(str_detect(DevType, "Engineering manager|Product manager|Senior executive/VP|Academic researcher|Scientist|Educator"))
+
+head(sod_survey$LanguageWorkedWith)
+```
+
+
+Leave only the columns that are potentially impactful to salary.
+```{r} 
+sod_survey$language_count <- sapply(sod_survey$LanguageWorkedWith,
+                                function(x) lengths(strsplit(x, split = ";")))
+
+sod_survey_selected <- sod_survey %>%
+  anti_join(atypical_employment) %>%
+  transmute(Respondent,
+    EdLevel = fct_collapse(EdLevel,
+      `Less than bachelor's` = c(
+        "I never completed any formal education",
+        "Primary/elementary school",
+        "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)",
+        "Some college/university study without earning a degree",
+        "Associate degree"
+      ),
+      `Bachelor's degree` = "Bachelor’s degree (BA, BS, B.Eng., etc.)",
+      `Graduate degree` = c(
+        "Other doctoral degree (Ph.D, Ed.D., etc.)",
+        "Master’s degree (MA, MS, M.Eng., MBA, etc.)",
+        "Professional degree (JD, MD, etc.)"
+      )
+    ),
+    DevType,
+    OpenSourcer = fct_collapse(OpenSourcer,
+      Never = "Never",
+      Sometimes = "Less than once per year",
+      Often = c(
+        "Less than once a month but more than once per year",
+        "Once a month or more often"
+      )
+    ),
+    OpenSourcer = fct_rev(OpenSourcer),
+    YearsCodePro = parse_number(YearsCodePro),
+    Gender = case_when(
+      str_detect(Gender, "Non-binary") ~ "Non-binary",
+      TRUE ~ Gender
+    ),
+    Dependents,
+    ConvertedComp,
+    language_count
+  )
+
+sod_survey_selected
+
+```
+
+
+```{r}
+
+
+```
+
+
+## Model
+
+Content: Linear regression or classification such as logistic regression or k-means has been used appropriately to help answer the research question/s with support from equations, tables, figures, etc as needed.
+-> 'Appropriately' means:
+1) The motivation for the analysis method is clear and suitable given the research question/s and dataset.
+2) Assumptions or pre-requisites of the analysis method have been detailed and satisfied.
+3) The analysis method has been briefly explained in plain language for readers who might not be familiar with it (see example added to Week 7 readings).
+4) The model is clearly stated and explained.
+5) The analysis has been conducted in an convincing way.
+6) The results of the analysis are presented in a credible way.
+7) The results of the analysis are discussed in a way that supports the story being told, including mentioning and attempting to justify unexpected or counter-intuitive results.
+8) Statistical uncertainty is discussed carefully and appropriately.
+9) Necessary tests are conducted.
+10) Weaknesses or shortcoming of the analysis method or results are noted and contextualized, and ways of proceeding are suggested.
+
+```{r}
+
+
+```
+
+## Ethical Issues
+
+This criterion is linked to a Learning OutcomeContent: Ethical issues around the research questions and/or dataset and/or analysis are discussed.
+
+## Shortcomings and Weaknesses
+
+Content: Shortcomings or weaknesses of the research questions and/or dataset and/or analysis are discussed.
+
+\newpage
+## Appendix 1
+
+Students who obtained written approval to use their own dataset should note this in an appendix that specifies the email address of the person who sent the email and the date the email was sent.
+ 
+george.hua@mail.utoronto.ca
+
+Date: 18 Feb, 2020
+
+Name: Hongtianxu Hua (George)
+
+\newpage
+## Appendix 2
