@@ -13,29 +13,29 @@ library(splitstackshape)
 
 data <- read_csv("./survey_results_public.csv")
 
+data <- data %>%
+  mutate(id = row_number())
+
 skim(data$CompTotal)
 
 sm_dt <- data %>%
   filter(Country == "United States",
          Employment == "Employed full-time") %>%
-  sample_n(20)
+  sample_n(200)
 
+# count how many languages worked with
 # reference: https://stackoverflow.com/questions/36209001/how-to-count-total-character-occurence-in-data-frame-and-add-column-using-mutate
-# issue: Language worked with column contains a "Other(s)" string, removed
+# Language worked with column contains a "Other(s)" string, removed
 test <- sm_dt %>%
   mutate(langs = strsplit(LanguageWorkedWith, ";")) %>%
   unnest(cols = c(langs)) %>%
-  group_by(LanguageWorkedWith) %>%
+  group_by(id) %>%
   filter(langs != "Other(s):") %>%
   mutate(LanguageWorkedWith_count=n()) %>%
   select(-langs) %>%
   distinct() %>%
-  select(LanguageWorkedWith, LanguageWorkedWith_count) 
+  select(id, LanguageWorkedWith, LanguageWorkedWith_count) 
   
-
-# Task
-# create a column only LanguageWorkedWith_count contains a specific language (Ex. R langauge)
-
 ```
 
 ## Abstract
@@ -57,6 +57,8 @@ Content: An introduction section is self-contained and tells a reader everything
 
 This criterion is linked to a Learning OutcomeContent: The research question/s that is/are of interest is/are clear, and appropriate to the dataset. The significance, feasibility, relevance, and/or other features as appropriate to the dataset and context, of the research question/s are discussed.
 -> Please note the drop-off in possible marks for not doing this appropriately.
+
+Which factors contribute more to the amount of salary received by survey respondents？
 
 ## Dataset
 
