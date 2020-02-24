@@ -11,6 +11,15 @@ output: pdf_document
   
 ## 2. Introduction
 
+Founded in 2008,Stack Overflow is one of the largest online community for anyone that codes to learn, share their knowledge, and build their careers. They come to Stack Overflow to ask coding questions, find solutions, help solve problems, develop new skills, and find job opportunities. (2020, Stack Overflow) According to its official data, by Feb 2020 there are over 19 million questions, 29 million answers, 12 million users in total and 11 million visits everyday. (2020, Stack Exchange)
+
+With large amount of programmers or coders, the user data gathered by Stack Overflow would be a good sample to analyze the demographic pattern as well as socio-economic phenomenon or correlations of this community. The publicly available datasets for this purpose is Stack Overflow’s annual Developer Survey. 
+
+Since 2010, the site fields a survey each year covering everything from developers’ favorite technologies to their job preferences. The 2019 one, the most resent version, is comprised of nearly 90,000 developers’ answer.(2019, Kaggle)
+
+By exploring the dataset, we would like to focus on the most interesting variable: salary, and build a regression model using salary as dependent variable. What would be the most influential factor to a programmer’s salary? Would education, gender, years of coding experience, or other independent variables provided by this survey be decisive to the salary range? 
+
+When discussing the result, we need to pay close attention to the correlations reflected by the model(s). Are they significant? Does the correlation indicate somewhat causal relations? Does the result reveal unusual evidences or even unfairness in the industry? Shall we interpret the result as job seeking advices for individuals, or calling for social justice for the whole community?
 
 ## Research Question
 
