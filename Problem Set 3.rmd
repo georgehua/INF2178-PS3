@@ -10,7 +10,6 @@ output: pdf_document
 
   
 ## 2. Introduction
-
 Founded in 2008,Stack Overflow is one of the largest online community for anyone that codes to learn, share their knowledge, and build their careers. They come to Stack Overflow to ask coding questions, find solutions, help solve problems, develop new skills, and find job opportunities. (2020, Stack Overflow) According to its official data, by Feb 2020 there are over 19 million questions, 29 million answers, 12 million users in total and 11 million visits everyday. (2020, Stack Exchange)
 
 With large amount of programmers or coders, the user data gathered by Stack Overflow would be a good sample to analyze the demographic pattern as well as socio-economic phenomenon or correlations of this community. The publicly available datasets for this purpose is Stack Overflow’s annual Developer Survey. 
@@ -40,6 +39,9 @@ library(readr)
 library(lubridate)
 library(psych)
 library(kableExtra)
+library(e1071)
+library(data.table)
+library(tidyr)
 
 ```
 
@@ -62,12 +64,24 @@ atypical_employment <- sod_survey %>%
 head(sod_survey$LanguageWorkedWith)
 ```
 
-
-Leave only the columns that are potentially impactful to salary.
-```{r} 
+##Pre-processing:
+#Create a new column "language_count" that contains the number of programming languages used by respondents on a daily basis.
+```{r}
 sod_survey$language_count <- sapply(sod_survey$LanguageWorkedWith,
                                 function(x) lengths(strsplit(x, split = ";")))
 
+sod_survey$database_count <- sapply(sod_survey$DatabaseWorkedWith,
+                                function(x) lengths(strsplit(x, split = ";")))
+
+sod_survey$webframe_count <- sapply(sod_survey$WebFrameWorkedWith,
+                                function(x) lengths(strsplit(x, split = ";")))
+
+
+```
+
+
+#Retain and Optimize the columns that are potentially impactful to salary.
+```{r}
 sod_survey_selected <- sod_survey %>%
   anti_join(atypical_employment) %>%
   transmute(Respondent,
@@ -87,6 +101,7 @@ sod_survey_selected <- sod_survey %>%
       )
     ),
     DevType,
+    Age1stCode,
     OpenSourcer = fct_collapse(OpenSourcer,
       Never = "Never",
       Sometimes = "Less than once per year",
@@ -101,21 +116,83 @@ sod_survey_selected <- sod_survey %>%
       str_detect(Gender, "Non-binary") ~ "Non-binary",
       TRUE ~ Gender
     ),
-    Dependents,
+    CareerSat,
+    JobSat,
     ConvertedComp,
-    language_count
+    WorkLoc,
+    WorkWeekHrs,
+    language_count,
+    database_count,
+    webframe_count
   )
 
-sod_survey_selected
+sod_survey_selected <- sod_survey_selected %>%
+  mutate(DevType = str_split(DevType, pattern = ";")) %>%
+  unnest(DevType) %>%
+  mutate(
+    DevType = case_when(
+      str_detect(str_to_lower(DevType), "data scientist") ~ "Data scientist",
+      str_detect(str_to_lower(DevType), "data or business") ~ "Data analyst",
+      str_detect(str_to_lower(DevType), "desktop") ~ "Desktop",
+      str_detect(str_to_lower(DevType), "embedded") ~ "Embedded",
+      str_detect(str_to_lower(DevType), "devops") ~ "DevOps",
+      str_detect(DevType, "Engineer, data") ~ "Data engineer",
+      str_detect(str_to_lower(DevType), "site reliability") ~ "DevOps",
+      TRUE ~ DevType
+    ),
+    DevType = str_remove_all(DevType, "Developer, "),
+    DevType = str_to_sentence(DevType),
+    DevType = str_replace_all(DevType, "Qa", "QA"),
+    DevType = str_replace_all(DevType, "Sre", "SRE"),
+    DevType = str_replace_all(DevType, "Devops", "DevOps")
+  ) %>%
+  filter(!is.na(DevType))
+
+sod_survey_selected <- sod_survey_selected[, -1] %>% 
+  rename(Education_Level = EdLevel, Developer_Type = DevType, Age_First_Code = Age1stCode, Years_Coding_Professionally = YearsCodePro, Career_Satisfaction = CareerSat, Job_Satisfaction = JobSat, Compensation_in_USD = ConvertedComp, Work_Location = WorkLoc, Work_Hours_Per_Week = WorkWeekHrs)
+
+colnames(sod_survey_selected)
+
+sod_survey_selected <- sod_survey_selected %>% 
+  drop_na()
+
+sod_survey_selected %>% 
+  summarise_all(.funs = funs(sum(is.na(.))))
 
 ```
 
-
+#Exploring distribution of the reported salary: Heavily-skewed (Positive Skewness)
 ```{r}
+skewness(sod_survey_selected$Compensation_in_USD)
 
+plotNormalHistogram(sod_survey_selected$Compensation_in_USD)
 
+sod_survey_selected[which.max(sod_survey_selected$Compensation_in_USD), ]
+
+sod_survey_selected[which.min(sod_survey_selected$Compensation_in_USD), ]
+
+## Does not make sense
+#boxplot(Compensation_in_USD ~ language_count, data = sod_survey_selected,
+#        col = rainbow(length(unique(sod_survey_selected$language_count))),
+#        xlab = "Number of Programming Languages Used In Work",
+#        ylab = "Compensation (USD)",
+#        main = "Distribution of Salary In Relation to Number of Languages Used")
 ```
 
+##Feature Selection:
+#From the results below, we can see that variables such as "Age First Code" and "Developer Type" might not be the most influential elements.
+```{r}
+# Backward Elimination
+full <- lm(Compensation_in_USD~.,data=sod_survey_selected)
+stepB <- stepAIC(full, direction= "backward", trace=FALSE)
+summary(stepB)
+
+# Forward Selection
+full_2 <- lm(Compensation_in_USD~., data=sod_survey_selected)
+null <- lm(Compensation_in_USD~1,data=sod_survey_selected)
+stepF <- stepAIC(null, scope=list(lower=null, upper=full), direction= "forward", trace=FALSE)
+summary(stepF)
+```
 
 ## Model
 
@@ -133,6 +210,9 @@ Content: Linear regression or classification such as logistic regression or k-me
 10) Weaknesses or shortcoming of the analysis method or results are noted and contextualized, and ways of proceeding are suggested.
 
 ```{r}
+# Very low R squared value, not sure why
+model_1 <- lm(Compensation_in_USD ~ Years_Coding_Professionally+Education_Level+OpenSourcer+Gender+Work_Hours_Per_Week+language_count, data = sod_survey_selected)
+summary(model_1)
 
 
 ```
