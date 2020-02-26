@@ -47,13 +47,19 @@ library(tidyr)
 
 
 ```{r}
-sod_survey <- read_csv("./survey_results_public.csv") %>% 
+#view historgram of ConvertedComp to decide what are the outliers to be removed.
+
+sod_survey <- read_csv("./survey_results_public.csv")
+
+hist(sod_survey$ConvertedComp)
+
+sod_survey <- sod_survey %>%  
   filter(
     Country == "United States",
     Employment == "Employed full-time",
     ## Remove atypical salary ranges
     ConvertedComp > 3e4,
-    ConvertedComp < 2e6
+    ConvertedComp < 5e5
   )
 
 sod_survey %>% summarise_all(.funs = funs(sum(is.na(.))))
@@ -61,7 +67,12 @@ sod_survey %>% summarise_all(.funs = funs(sum(is.na(.))))
 atypical_employment <- sod_survey %>%
   filter(str_detect(DevType, "Engineering manager|Product manager|Senior executive/VP|Academic researcher|Scientist|Educator"))
 
+#this step only removes management job types as independent variables
+#but does not necessarily means that we can eliminate outliers
+#outliers can be caused by intentional typos or intentional jokes
+
 head(sod_survey$LanguageWorkedWith)
+hist(sod_survey$ConvertedComp)
 ```
 
 ##Pre-processing:
