@@ -43,6 +43,7 @@ library(e1071)
 library(data.table)
 library(tidyr)
 library(rcompanion)
+library(MASS)
 
 ```
 
@@ -172,13 +173,6 @@ plotNormalHistogram(sod_survey_selected$Compensation_in_USD)
 sod_survey_selected[which.max(sod_survey_selected$Compensation_in_USD), ]
 
 sod_survey_selected[which.min(sod_survey_selected$Compensation_in_USD), ]
-
-## Does not make sense
-#boxplot(Compensation_in_USD ~ language_count, data = sod_survey_selected,
-#        col = rainbow(length(unique(sod_survey_selected$language_count))),
-#        xlab = "Number of Programming Languages Used In Work",
-#        ylab = "Compensation (USD)",
-#        main = "Distribution of Salary In Relation to Number of Languages Used")
 ```
 
 ##Feature Selection:
@@ -212,14 +206,12 @@ Content: Linear regression or classification such as logistic regression or k-me
 10) Weaknesses or shortcoming of the analysis method or results are noted and contextualized, and ways of proceeding are suggested.
 
 ```{r}
-# Trying to add log scale of salary
-testing <- sod_survey_selected %>% 
-  mutate(Compensation_in_USD = log(Compensation_in_USD))
+
 # Very low R squared value, not sure why
-model_1 <- lm(Compensation_in_USD ~ .-Age_First_Code, data = testing)
+model_1 <- lm(Compensation_in_USD ~ .-Age_First_Code, data = sod_survey_selected)
 summary(model_1)
 
-
+plot(model_1)
 ```
 
 ## Ethical Issues
