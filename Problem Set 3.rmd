@@ -47,7 +47,11 @@ library(MASS)
 
 
 ```{r}
-sod_survey <- read_csv("./survey_results_public.csv") %>% 
+
+#view historgram of ConvertedComp to decide what are the outliers to be removed.
+sod_survey <- read_csv("./survey_results_public.csv")
+hist(sod_survey$ConvertedComp)
+sod_survey <- sod_survey %>%  
   filter(
     Country == "United States",
     Employment == "Employed full-time",
@@ -60,8 +64,12 @@ sod_survey %>% summarise_all(.funs = funs(sum(is.na(.))))
 
 atypical_employment <- sod_survey %>%
   filter(str_detect(DevType, "Engineering manager|Product manager|Senior executive/VP|Academic researcher|Scientist|Educator"))
-
+#this step only removes management job types as independent variables
+#but does not necessarily means that we can eliminate outliers
+#outliers can be caused by intentional typos or intentional jokes
 head(sod_survey$LanguageWorkedWith)
+hist(sod_survey$ConvertedComp)
+
 ```
 
 ##Pre-processing:
@@ -218,9 +226,24 @@ plot(model_1, 5)
 
 This criterion is linked to a Learning OutcomeContent: Ethical issues around the research questions and/or dataset and/or analysis are discussed.
 
+Privacy issue: the survey respondents might be concerned with privacy issue, although they must have been notified that the survey is anonymous and the result will be made public. They might be comfortable filling out the survey, but there's no guarantee that they will be honest when answering questions on their privacy.
+
+
 ## Shortcomings and Weaknesses
 
-Content: Shortcomings or weaknesses of the research questions and/or dataset and/or analysis are discussed.
+There are a few shortcomings in the dataset:
+
+How was the survey conducted? Does the design of the survey (e.g. questions asked, length, wording, etc.) affect survey respondents' attitude when completing the survey, thus affecting the result?
+
+Are there other possible variables that were missed in the survey? Such as the geographic location of the respondents or the location of the business they work for (e.g. salaries of San Francisco bay area would be much higher than those in Toronto), the industry they work for (e.g. SNS, SASS, finance, etc.), and other factors that may greatly influence income level. Should we have the additional infomration, we might be able to build a better model.
+
+And in terms of dependent variables, are there better evaluation of work achievement other than salary and job satisfaction? Would there be any quantitative metrics that describe a developer's contribution of coding? That's also a question worth thinking.
+
+We also find some weaknesss in our pre-processing methods and analysis methods:
+
+In the original datasets, there are columns containing multiple options in a survey question; some even contain options like "other" that allow respondents to type in their own answers. For convenient purpose, we simply converted a few columns into some numeric values by counting the options appeared in one answer, such as the columns about language, database and webframe. We failed to process these variables in a more sensible way, thus unable to explore further into their possible impact on salary. 
+
+If such variables are interpreted ideally, we might be able to answer questions like: what computer language might get you higher salary? What database technologies were used in companies that are more likely to give you better compensation? And we can even explore other phenomenon such as the frequent co-occurance of some front-end and back-end technologies (association rule learning), and the relevant language, job functions, etc.
 
 \newpage
 ## Appendix 1
