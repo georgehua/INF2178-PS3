@@ -25,267 +25,16 @@ When discussing the result, we need to pay close attention to the correlations r
 This criterion is linked to a Learning OutcomeContent: The research question/s that is/are of interest is/are clear, and appropriate to the dataset. The significance, feasibility, relevance, and/or other features as appropriate to the dataset and context, of the research question/s are discussed.
 -> Please note the drop-off in possible marks for not doing this appropriately.
 
-**Experience on Salary**
-
 ## Dataset
 
 
 ```{r, setup, include=FALSE}
 
-# library(opendatatoronto)
 library(tidyverse)
 library(stringr)
 library(skimr)
 library(janitor)
 library(readr)
-library(lubridate)
-library(psych)
-library(kableExtra)
-library(e1071)
-library(data.table)
-library(tidyr)
-library(rcompanion)
-
-```
-
-
-```{r}
-sod_survey <- read_csv("./survey_results_public.csv") %>% 
-  filter(
-    Country == "United States",
-    Employment == "Employed full-time",
-    ## Remove atypical salary ranges
-    ConvertedComp > 3e4,
-    ConvertedComp < 5e5
-  )
-
-sod_survey %>% summarise_all(.funs = funs(sum(is.na(.))))
-
-atypical_employment <- sod_survey %>%
-  filter(str_detect(DevType, "Engineering manager|Product manager|Senior executive/VP|Academic researcher|Scientist|Educator"))
-
-head(sod_survey$LanguageWorkedWith)
-```
-
-##Pre-processing:
-#Create a new column "language_count" that contains the number of programming languages used by respondents on a daily basis.
-```{r}
-sod_survey$language_count <- sapply(sod_survey$LanguageWorkedWith,
-                                function(x) lengths(strsplit(x, split = ";")))
-
-sod_survey$database_count <- sapply(sod_survey$DatabaseWorkedWith,
-                                function(x) lengths(strsplit(x, split = ";")))
-
-sod_survey$webframe_count <- sapply(sod_survey$WebFrameWorkedWith,
-                                function(x) lengths(strsplit(x, split = ";")))
-
-
-```
-
-
-#Retain and Optimize the columns that are potentially impactful to salary.
-```{r}
-sod_survey_selected <- sod_survey %>%
-  anti_join(atypical_employment) %>%
-  transmute(Respondent,
-    EdLevel = fct_collapse(EdLevel,
-      `Less than bachelor's` = c(
-        "I never completed any formal education",
-        "Primary/elementary school",
-        "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)",
-        "Some college/university study without earning a degree",
-        "Associate degree"
-      ),
-      `Bachelor's degree` = "Bachelor’s degree (BA, BS, B.Eng., etc.)",
-      `Graduate degree` = c(
-        "Other doctoral degree (Ph.D, Ed.D., etc.)",
-        "Master’s degree (MA, MS, M.Eng., MBA, etc.)",
-        "Professional degree (JD, MD, etc.)"
-      )
-    ),
-    DevType,
-    Age1stCode,
-    OpenSourcer = fct_collapse(OpenSourcer,
-      Never = "Never",
-      Sometimes = "Less than once per year",
-      Often = c(
-        "Less than once a month but more than once per year",
-        "Once a month or more often"
-      )
-    ),
-    OpenSourcer = fct_rev(OpenSourcer),
-    YearsCodePro = parse_number(YearsCodePro),
-    Gender = case_when(
-      str_detect(Gender, "Non-binary") ~ "Non-binary",
-      TRUE ~ Gender
-    ),
-    CareerSat,
-    JobSat,
-    ConvertedComp,
-    WorkLoc,
-    WorkWeekHrs,
-    language_count,
-    database_count,
-    webframe_count
-  )
-
-sod_survey_selected <- sod_survey_selected %>%
-  mutate(DevType = str_split(DevType, pattern = ";")) %>%
-  unnest(DevType) %>%
-  mutate(
-    DevType = case_when(
-      str_detect(str_to_lower(DevType), "data scientist") ~ "Data scientist",
-      str_detect(str_to_lower(DevType), "data or business") ~ "Data analyst",
-      str_detect(str_to_lower(DevType), "desktop") ~ "Desktop",
-      str_detect(str_to_lower(DevType), "embedded") ~ "Embedded",
-      str_detect(str_to_lower(DevType), "devops") ~ "DevOps",
-      str_detect(DevType, "Engineer, data") ~ "Data engineer",
-      str_detect(str_to_lower(DevType), "site reliability") ~ "DevOps",
-      TRUE ~ DevType
-    ),
-    DevType = str_remove_all(DevType, "Developer, "),
-    DevType = str_to_sentence(DevType),
-    DevType = str_replace_all(DevType, "Qa", "QA"),
-    DevType = str_replace_all(DevType, "Sre", "SRE"),
-    DevType = str_replace_all(DevType, "Devops", "DevOps")
-  ) %>%
-  filter(!is.na(DevType)) %>% 
-  filter(Gender %in% c("Man", "Woman"))
-
-sod_survey_selected <- sod_survey_selected[, -1] %>% 
-  rename(Education_Level = EdLevel, Developer_Type = DevType, Age_First_Code = Age1stCode, Years_Coding_Professionally = YearsCodePro, Career_Satisfaction = CareerSat, Job_Satisfaction = JobSat, Compensation_in_USD = ConvertedComp, Work_Location = WorkLoc, Work_Hours_Per_Week = WorkWeekHrs)
-
-colnames(sod_survey_selected)
-
-sod_survey_selected <- sod_survey_selected %>% 
-  drop_na()
-
-sod_survey_selected %>% 
-  summarise_all(.funs = funs(sum(is.na(.))))
-
-```
-
-#Exploring distribution of the reported salary: Heavily-skewed (Positive Skewness)
-```{r}
-skewness(sod_survey_selected$Compensation_in_USD)
-
-plotNormalHistogram(sod_survey_selected$Compensation_in_USD)
-
-sod_survey_selected[which.max(sod_survey_selected$Compensation_in_USD), ]
-
-sod_survey_selected[which.min(sod_survey_selected$Compensation_in_USD), ]
-
-## Does not make sense
-#boxplot(Compensation_in_USD ~ language_count, data = sod_survey_selected,
-#        col = rainbow(length(unique(sod_survey_selected$language_count))),
-#        xlab = "Number of Programming Languages Used In Work",
-#        ylab = "Compensation (USD)",
-#        main = "Distribution of Salary In Relation to Number of Languages Used")
-```
-
-##Feature Selection:
-#From the results below, we can see that variables such as "Age First Code" might not be one of the most influential elements.
-```{r}
-# Backward Elimination
-full <- lm(Compensation_in_USD~.,data=sod_survey_selected)
-stepB <- stepAIC(full, direction= "backward", trace=FALSE)
-summary(stepB)
-
-# Forward Selection
-full_2 <- lm(Compensation_in_USD~., data=sod_survey_selected)
-null <- lm(Compensation_in_USD~1,data=sod_survey_selected)
-stepF <- stepAIC(null, scope=list(lower=null, upper=full), direction= "forward", trace=FALSE)
-summary(stepF)
-```
-
-## Model
-
-Content: Linear regression or classification such as logistic regression or k-means has been used appropriately to help answer the research question/s with support from equations, tables, figures, etc as needed.
--> 'Appropriately' means:
-1) The motivation for the analysis method is clear and suitable given the research question/s and dataset.
-2) Assumptions or pre-requisites of the analysis method have been detailed and satisfied.
-3) The analysis method has been briefly explained in plain language for readers who might not be familiar with it (see example added to Week 7 readings).
-4) The model is clearly stated and explained.
-5) The analysis has been conducted in an convincing way.
-6) The results of the analysis are presented in a credible way.
-7) The results of the analysis are discussed in a way that supports the story being told, including mentioning and attempting to justify unexpected or counter-intuitive results.
-8) Statistical uncertainty is discussed carefully and appropriately.
-9) Necessary tests are conducted.
-10) Weaknesses or shortcoming of the analysis method or results are noted and contextualized, and ways of proceeding are suggested.
-
-```{r}
-# Trying to add log scale of salary
-testing <- sod_survey_selected %>% 
-  mutate(Compensation_in_USD = log(Compensation_in_USD))
-# Very low R squared value, not sure why
-model_1 <- lm(Compensation_in_USD ~ .-Age_First_Code, data = testing)
-summary(model_1)
-
-
-```
-
-## Ethical Issues
-
-This criterion is linked to a Learning OutcomeContent: Ethical issues around the research questions and/or dataset and/or analysis are discussed.
-
-## Shortcomings and Weaknesses
-
-Content: Shortcomings or weaknesses of the research questions and/or dataset and/or analysis are discussed.
-
-\newpage
-## Appendix 1
-
-Students who obtained written approval to use their own dataset should note this in an appendix that specifies the email address of the person who sent the email and the date the email was sent.
- 
-george.hua@mail.utoronto.ca
-
-Date: 18 Feb, 2020
-
-Name: Hongtianxu Hua (George)
-
-\newpage
-=======
----
-title: "An Informative Title"
-author: "Group Alderwood: Zhaotian Li, Yonghao Li, Hongtianxu Hua"
-date: "23 Feb, 2020"
-output: pdf_document
----
-
-
-## 1. Abstract
-
-  
-## 2. Introduction
-Founded in 2008,Stack Overflow is one of the largest online community for anyone that codes to learn, share their knowledge, and build their careers. They come to Stack Overflow to ask coding questions, find solutions, help solve problems, develop new skills, and find job opportunities. (2020, Stack Overflow) According to its official data, by Feb 2020 there are over 19 million questions, 29 million answers, 12 million users in total and 11 million visits everyday. (2020, Stack Exchange)
-
-With large amount of programmers or coders, the user data gathered by Stack Overflow would be a good sample to analyze the demographic pattern as well as socio-economic phenomenon or correlations of this community. The publicly available datasets for this purpose is Stack Overflow’s annual Developer Survey. 
-
-Since 2010, the site fields a survey each year covering everything from developers’ favorite technologies to their job preferences. The 2019 one, the most resent version, is comprised of nearly 90,000 developers’ answer.(2019, Kaggle)
-
-By exploring the dataset, we would like to focus on the most interesting variable: salary, and build a regression model using salary as dependent variable. What would be the most influential factor to a programmer’s salary? Would education, gender, years of coding experience, or other independent variables provided by this survey be decisive to the salary range? 
-
-When discussing the result, we need to pay close attention to the correlations reflected by the model(s). Are they significant? Does the correlation indicate somewhat causal relations? Does the result reveal unusual evidences or even unfairness in the industry? Shall we interpret the result as job seeking advices for individuals, or calling for social justice for the whole community?
-
-## Research Question
-
-This criterion is linked to a Learning OutcomeContent: The research question/s that is/are of interest is/are clear, and appropriate to the dataset. The significance, feasibility, relevance, and/or other features as appropriate to the dataset and context, of the research question/s are discussed.
--> Please note the drop-off in possible marks for not doing this appropriately.
-
-## Dataset
-
-
-```{r, setup, include=FALSE}
-
-# library(opendatatoronto)
-library(tidyverse)
-library(stringr)
-library(skimr)
-library(janitor)
-library(readr)
-library(lubridate)
-library(psych)
-library(kableExtra)
 library(e1071)
 library(data.table)
 library(tidyr)
@@ -459,6 +208,8 @@ model_1 <- lm(Compensation_in_USD ~ .-Age_First_Code, data = sod_survey_selected
 summary(model_1)
 
 plot(model_1, 1)
+plot(model_1, 2)
+plot(model_1, 5)
 ```
 
 ## Ethical Issues
@@ -482,4 +233,31 @@ Name: Hongtianxu Hua (George)
 
 \newpage
 ## Appendix 2
->>>>>>> 68f94d06b9ec91b1201fe4464032b8dae7b3e813
+# References
+
+Stack Overflow 2019 Survey Collection Methodology. https://insights.stackoverflow.com/survey/2019#methodology
+
+Julia Silge (2019). Modeling Salary and Gender in The Tech Industry. https://juliasilge.com/blog/salary-gender/
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686. https://doi.org/10.21105/joss.01686
+
+Hadley Wickham (2019). stringr: Simple, Consistent Wrappers for Common String Operations. R package version 1.4.0. https://CRAN.R-project.org/package=stringr
+
+Elin Waring, Michael Quinn, Amelia McNamara, Eduardo Arino de la Rubia, Hao Zhu and Shannon Ellis (2019). Skimr: Compact and Flexible Summaries of Data. R package version 2.0.2. https://CRAN.R-project.org/package=skimr
+
+Sam Firke (2019). janitor: Simple Tools for Examining and Cleaning Dirty Data. R package version 1.2.0. https://CRAN.R-project.org/package=janitor
+
+Hadley Wickham, Jim Hester and Romain Francois (2018). readr: Read Rectangular Text Data. R package version 1.3.1. https://CRAN.R-project.org/package=readr
+
+David Meyer, Evgenia Dimitriadou, Kurt Hornik, Andreas Weingessel and Friedrich Leisch (2019). e1071: Misc Functions of the Department of Statistics, Probability Theory Group (Formerly: E1071), TU Wien. R package version 1.7-3. https://CRAN.R-project.org/package=e1071
+
+Matt Dowle and Arun Srinivasan (2019). data.table: Extension of `data.frame`. R package version 1.12.8. https://CRAN.R-project.org/package=data.table
+
+Hadley Wickham and Lionel Henry (2020). tidyr: Tidy Messy Data. R package version 1.0.2. https://CRAN.R-project.org/package=tidyr
+
+Salvatore Mangiafico (2020). rcompanion: Functions to Support Extension Education Program Evaluation. R package version 2.3.25. https://CRAN.R-project.org/package=rcompanion
+
+Venables, W. N. & Ripley, B. D. (2002) Modern Applied Statistics with S. Fourth Edition. Springer, New York. ISBN 0-387-95457-0.
+
+R Core Team (2014). R: A language and environment for statistical computing. R Foundation for StatisticalComputing, Vienna, Austria. URL http://www.R-project.org/.3
+
