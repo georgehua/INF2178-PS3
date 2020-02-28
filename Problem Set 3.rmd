@@ -72,9 +72,9 @@ hist(sod_survey$ConvertedComp)
 
 ```
 
-##Pre-processing:
-#Create a new column "language_count" that contains the number of programming languages used by respondents on a daily basis.
-```{r}
+## Pre-processing:
+### Create a new column "language_count" that contains the number of programming languages used by respondents on a daily basis.
+```{r, include=FALSE}
 sod_survey$language_count <- sapply(sod_survey$LanguageWorkedWith,
                                 function(x) lengths(strsplit(x, split = ";")))
 
@@ -88,8 +88,8 @@ sod_survey$webframe_count <- sapply(sod_survey$WebFrameWorkedWith,
 ```
 
 
-#Retain and Optimize the columns that are potentially impactful to salary.
-```{r}
+### Retain and Optimize the columns that are potentially impactful to salary.
+```{r, include=FALSE}
 sod_survey_selected <- sod_survey %>%
   anti_join(atypical_employment) %>%
   transmute(Respondent,
@@ -170,7 +170,7 @@ sod_survey_selected %>%
 
 ```
 
-#Exploring distribution of the reported salary: Heavily-skewed (Positive Skewness)
+### Exploring distribution of the reported salary: Heavily-skewed (Positive Skewness)
 ```{r}
 skewness(sod_survey_selected$Compensation_in_USD)
 
@@ -181,8 +181,8 @@ sod_survey_selected[which.max(sod_survey_selected$Compensation_in_USD), ]
 sod_survey_selected[which.min(sod_survey_selected$Compensation_in_USD), ]
 ```
 
-##Feature Selection:
-#From the results below, we can see that variables such as "Age First Code" might not be one of the most influential elements.
+## Feature Selection:
+### From the results below, we can see that variables such as "Age First Code" might not be one of the most influential elements.
 ```{r}
 # Backward Elimination
 full <- lm(Compensation_in_USD~.,data=sod_survey_selected)
@@ -212,15 +212,34 @@ Content: Linear regression or classification such as logistic regression or k-me
 10) Weaknesses or shortcoming of the analysis method or results are noted and contextualized, and ways of proceeding are suggested.
 
 ```{r}
-
-# Very low R squared value, not sure why
-model_1 <- lm(Compensation_in_USD ~ .-Age_First_Code, data = sod_survey_selected)
+model_1 <- lm(log(Compensation_in_USD) ~ .-Age_First_Code, data = sod_survey_selected)
 summary(model_1)
+```
+**Model Interpretation**
+- Significant predicting factors (3-star)
+- Coefficient comparison (beta values of each)
+- R-squared (explains about 25 percent of variance in the log scale of salary)
+- p-value interpretation (statistically significant at α= 0 and α= 0.001, with a p-value less than 0.05)
+- Other
 
+
+### Testing and Analysis on Model Assumptions
+
+1. From the Residual versus Fitted plot, we can see that although there are small portions of residuals trailing off at the beginning and end, the red line is approximately at zero, suggesting a linear relationship between predictors and the log scale of salary.
+```{r}
 plot(model_1, 1)
+```
+
+This Normal Quantile-Quantile plot shows that the standardized residual points closely follow the reference line until around the third and fourth quantile. This suggests that the model might be sightly right-skewed, with the majority in a normal distribution. We can also see that within the right-skew area, there are much less residual points, indicating that only a small number of respondents receive higher-than-usual salary.
+```{r}
 plot(model_1, 2)
+```
+
+As expected, the Residuals verus Leverage plot shows no outliers within the model. Our previous filtering has effectively eliminated outliers.
+```{r}
 plot(model_1, 5)
 ```
+
 
 ## Ethical Issues
 
