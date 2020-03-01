@@ -1,7 +1,7 @@
 ---
-title: "Model Experience Level on Salary in the Tech Industry, Graduate Degree Matters"
+title: "Linear Regression Model of Experience Level on Salary in Tech Industry"
 author: "Group Alderwood: Zhaotian Li, Yonghao Li, Hongtianxu Hua"
-date: "29 Feb, 2020"
+date: "1 March, 2020"
 output: pdf_document
 ---
 
@@ -23,8 +23,8 @@ library(scales)
 
 
 # First download and read the dataset from Kaggle.com
-# sod_survey <- read_csv("https://www.kaggle.com/mchirico/stack-overflow-developer-survey-results-2019/")
-sod_survey <- read_csv("./survey_results_public.csv")
+sod_survey <- read_csv("https://www.kaggle.com/mchirico/stack-overflow-developer-survey-results-2019/")
+# sod_survey <- read_csv("./survey_results_public.csv")
 
 # Use filter to select data portion that fits our research scope
 # (Using Julia Silge's codes on website as reference)
