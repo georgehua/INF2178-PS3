@@ -212,7 +212,7 @@ Content: Linear regression or classification such as logistic regression or k-me
 10) Weaknesses or shortcoming of the analysis method or results are noted and contextualized, and ways of proceeding are suggested.
 
 ```{r}
-model_1 <- lm(log(Compensation_in_USD) ~ .-Age_First_Code, data = sod_survey_selected)
+model_1 <- lm(log(Compensation_in_USD) ~ Education_Level + OpenSourcer + Years_Coding_Professionally + Work_Hours_Per_Week + language_count + database_count + webframe_count, data = sod_survey_selected)
 summary(model_1)
 ```
 **Model Interpretation**
