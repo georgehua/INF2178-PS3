@@ -1,0 +1,181 @@
+---
+title: "An Informative Title"
+author: "Group Alderwood: Zhaotian Li, Yonghao Li, Hongtianxu Hua"
+date: "29 Feb, 2020"
+output: pdf_document
+---
+
+
+```{r, setup, include=FALSE}
+
+# Load in necessary libraries
+library(tidyverse)
+library(stringr)
+library(skimr)
+library(janitor)
+library(readr)
+library(e1071)
+library(data.table)
+library(tidyr)
+library(rcompanion)
+library(MASS)
+
+
+# View historgram of ConvertedComp to decide what are the outliers to be removed.
+sod_survey <- read_csv("./survey_results_public.csv")
+hist(sod_survey$ConvertedComp)
+
+# Use filter to select data portion that fits our research scope
+sod_survey <- sod_survey %>%  
+  filter(
+    Country == "United States",
+    Employment == "Employed full-time",
+    ## Remove atypical salary ranges
+    ConvertedComp > 3e4,
+    ConvertedComp < 5e5
+  )
+
+sod_survey %>% summarise_all(.funs = funs(sum(is.na(.))))
+
+atypical_employment <- sod_survey %>%
+  filter(str_detect(DevType, "Engineering manager|Product manager|Senior executive/VP|Academic researcher|Scientist|Educator"))
+# This step only removes management job types as independent variables but does not guarantee the eliminateion of outliers.
+# Outliers can be caused by intentional typos or jokes within responses.
+head(sod_survey$LanguageWorkedWith)
+hist(sod_survey$ConvertedComp)
+
+
+# Pre-processing:
+# Create new columns containing the numbers of programming languages, database, and webframe used by respondents on a daily basis
+sod_survey$language_count <- sapply(sod_survey$LanguageWorkedWith,
+                                function(x) lengths(strsplit(x, split = ";")))
+
+sod_survey$database_count <- sapply(sod_survey$DatabaseWorkedWith,
+                                function(x) lengths(strsplit(x, split = ";")))
+
+sod_survey$webframe_count <- sapply(sod_survey$WebFrameWorkedWith,
+                                function(x) lengths(strsplit(x, split = ";")))
+
+
+# Retain and Optimize the columns that are potentially impactful to salary
+sod_survey_selected <- sod_survey %>%
+  anti_join(atypical_employment) %>%
+  transmute(Respondent,
+    EdLevel = fct_collapse(EdLevel,
+      `Less than bachelor's` = c(
+        "I never completed any formal education",
+        "Primary/elementary school",
+        "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)",
+        "Some college/university study without earning a degree",
+        "Associate degree"
+      ),
+      `Bachelor's degree` = "Bachelor’s degree (BA, BS, B.Eng., etc.)",
+      `Graduate degree` = c(
+        "Other doctoral degree (Ph.D, Ed.D., etc.)",
+        "Master’s degree (MA, MS, M.Eng., MBA, etc.)",
+        "Professional degree (JD, MD, etc.)"
+      )
+    ),
+    DevType,
+    Age1stCode,
+    OpenSourcer = fct_collapse(OpenSourcer,
+      Never = "Never",
+      Sometimes = "Less than once per year",
+      Often = c(
+        "Less than once a month but more than once per year",
+        "Once a month or more often"
+      )
+    ),
+    OpenSourcer = fct_rev(OpenSourcer),
+    YearsCodePro = parse_number(YearsCodePro),
+    Gender = case_when(
+      str_detect(Gender, "Non-binary") ~ "Non-binary",
+      TRUE ~ Gender
+    ),
+    CareerSat,
+    JobSat,
+    ConvertedComp,
+    WorkLoc,
+    WorkWeekHrs,
+    language_count,
+    database_count,
+    webframe_count
+  )
+
+# Change sub-catgories of DevType to be more readable
+sod_survey_selected <- sod_survey_selected %>%
+  mutate(DevType = str_split(DevType, pattern = ";")) %>%
+  unnest(DevType) %>%
+  mutate(
+    DevType = case_when(
+      str_detect(str_to_lower(DevType), "data scientist") ~ "Data scientist",
+      str_detect(str_to_lower(DevType), "data or business") ~ "Data analyst",
+      str_detect(str_to_lower(DevType), "desktop") ~ "Desktop",
+      str_detect(str_to_lower(DevType), "embedded") ~ "Embedded",
+      str_detect(str_to_lower(DevType), "devops") ~ "DevOps",
+      str_detect(DevType, "Engineer, data") ~ "Data engineer",
+      str_detect(str_to_lower(DevType), "site reliability") ~ "DevOps",
+      TRUE ~ DevType
+    ),
+    DevType = str_remove_all(DevType, "Developer, "),
+    DevType = str_to_sentence(DevType),
+    DevType = str_replace_all(DevType, "Qa", "QA"),
+    DevType = str_replace_all(DevType, "Sre", "SRE"),
+    DevType = str_replace_all(DevType, "Devops", "DevOps")
+  ) %>%
+  filter(!is.na(DevType)) %>% 
+  filter(Gender %in% c("Man", "Woman"))
+
+# Rename column headers to be comprehensible
+sod_survey_selected <- sod_survey_selected[, -1] %>% 
+  rename(Education_Level = EdLevel, Developer_Type = DevType, Age_First_Code = Age1stCode, Years_Coding_Professionally = YearsCodePro, Career_Satisfaction = CareerSat, Job_Satisfaction = JobSat, Compensation_in_USD = ConvertedComp, Work_Location = WorkLoc, Work_Hours_Per_Week = WorkWeekHrs)
+
+colnames(sod_survey_selected)
+
+# Remove missing values
+sod_survey_selected <- sod_survey_selected %>% 
+  drop_na()
+
+sod_survey_selected %>% 
+  summarise_all(.funs = funs(sum(is.na(.))))
+
+
+# Exploring distribution of the reported salary: Heavily-skewed (Positive Skewness)
+skewness(sod_survey_selected$Compensation_in_USD)
+
+plotNormalHistogram(sod_survey_selected$Compensation_in_USD)
+
+# Explore the respondents with min or max salary
+sod_survey_selected[which.max(sod_survey_selected$Compensation_in_USD), ]
+
+sod_survey_selected[which.min(sod_survey_selected$Compensation_in_USD), ]
+
+
+# Feature Selection:
+# From the results below, we can see that variables such as "Age First Code" might not be one of the most influential elements.
+# 1. Backward Elimination
+full <- lm(Compensation_in_USD~.,data=sod_survey_selected)
+stepB <- stepAIC(full, direction= "backward", trace=FALSE)
+summary(stepB)
+
+# 2. Forward Selection
+full_2 <- lm(Compensation_in_USD~., data=sod_survey_selected)
+null <- lm(Compensation_in_USD~1,data=sod_survey_selected)
+stepF <- stepAIC(null, scope=list(lower=null, upper=full), direction= "forward", trace=FALSE)
+summary(stepF)
+
+
+# Linear Regression:
+# Building a linear model
+model_1 <- lm(log(Compensation_in_USD) ~ Education_Level + OpenSourcer + Years_Coding_Professionally + Work_Hours_Per_Week + language_count + database_count + webframe_count, data = sod_survey_selected)
+# View summary statistics of the model
+summary(model_1)
+
+
+# Testing and Analysis on Model Assumptions:
+plot(model_1, 1) # Testing linearity and constant variance
+plot(model_1, 2) # Testing normality
+plot(model_1, 5) # Check for outliers
+
+
+```
