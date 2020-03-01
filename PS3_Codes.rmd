@@ -1,12 +1,12 @@
 ---
-title: "An Informative Title"
+title: "Model Experience Level on Salary in the Tech Industry, Graduate Degree Matters"
 author: "Group Alderwood: Zhaotian Li, Yonghao Li, Hongtianxu Hua"
 date: "29 Feb, 2020"
 output: pdf_document
 ---
 
 
-```{r, setup, include=FALSE}
+```{r, setup, eval=FALSE}
 
 # Load in necessary libraries
 library(tidyverse)
@@ -19,34 +19,38 @@ library(data.table)
 library(tidyr)
 library(rcompanion)
 library(MASS)
+library(scales)
 
 
-# View historgram of ConvertedComp to decide what are the outliers to be removed.
+# First download and read the dataset from Kaggle.com
+# sod_survey <- read_csv("https://www.kaggle.com/mchirico/stack-overflow-developer-survey-results-2019/")
 sod_survey <- read_csv("./survey_results_public.csv")
-hist(sod_survey$ConvertedComp)
 
 # Use filter to select data portion that fits our research scope
+# (Using Julia Silge's codes on website as reference)
 sod_survey <- sod_survey %>%  
   filter(
     Country == "United States",
     Employment == "Employed full-time",
     ## Remove atypical salary ranges
     ConvertedComp > 3e4,
-    ConvertedComp < 5e5
+    ConvertedComp < 3e5
   )
 
 sod_survey %>% summarise_all(.funs = funs(sum(is.na(.))))
 
 atypical_employment <- sod_survey %>%
-  filter(str_detect(DevType, "Engineering manager|Product manager|Senior executive/VP|Academic researcher|Scientist|Educator"))
-# This step only removes management job types as independent variables but does not guarantee the eliminateion of outliers.
+  filter(str_detect(DevType, "Engineering manager|Product manager|
+                    Senior executive/VP|Academic researcher
+                    |Scientist|Educator"))
+# This step only removes management job types as independent variables 
+# but does not guarantee the eliminateion of outliers.
 # Outliers can be caused by intentional typos or jokes within responses.
 head(sod_survey$LanguageWorkedWith)
-hist(sod_survey$ConvertedComp)
-
 
 # Pre-processing:
-# Create new columns containing the numbers of programming languages, database, and webframe used by respondents on a daily basis
+# Create new columns containing the numbers of programming languages,
+# database, and webframe used by respondents on a daily basis
 sod_survey$language_count <- sapply(sod_survey$LanguageWorkedWith,
                                 function(x) lengths(strsplit(x, split = ";")))
 
@@ -58,6 +62,7 @@ sod_survey$webframe_count <- sapply(sod_survey$WebFrameWorkedWith,
 
 
 # Retain and Optimize the columns that are potentially impactful to salary
+# (Using Julia Silge's codes on website as reference)
 sod_survey_selected <- sod_survey %>%
   anti_join(atypical_employment) %>%
   transmute(Respondent,
@@ -103,6 +108,7 @@ sod_survey_selected <- sod_survey %>%
   )
 
 # Change sub-catgories of DevType to be more readable
+# (Using Julia Silge's codes on website as reference)
 sod_survey_selected <- sod_survey_selected %>%
   mutate(DevType = str_split(DevType, pattern = ";")) %>%
   unnest(DevType) %>%
@@ -128,7 +134,10 @@ sod_survey_selected <- sod_survey_selected %>%
 
 # Rename column headers to be comprehensible
 sod_survey_selected <- sod_survey_selected[, -1] %>% 
-  rename(Education_Level = EdLevel, Developer_Type = DevType, Age_First_Code = Age1stCode, Years_Coding_Professionally = YearsCodePro, Career_Satisfaction = CareerSat, Job_Satisfaction = JobSat, Compensation_in_USD = ConvertedComp, Work_Location = WorkLoc, Work_Hours_Per_Week = WorkWeekHrs)
+  rename(Education_Level = EdLevel, Developer_Type = DevType, Age_First_Code = Age1stCode,
+         Years_Coding_Professionally = YearsCodePro, Career_Satisfaction = CareerSat,
+         Job_Satisfaction = JobSat, Compensation_in_USD = ConvertedComp,
+         Work_Location = WorkLoc, Work_Hours_Per_Week = WorkWeekHrs)
 
 colnames(sod_survey_selected)
 
@@ -140,10 +149,15 @@ sod_survey_selected %>%
   summarise_all(.funs = funs(sum(is.na(.))))
 
 
-# Exploring distribution of the reported salary: Heavily-skewed (Positive Skewness)
+# View historgram of ConvertedComp to get a general sense of salary distribution
+# Heavily-skewed (Positive Skewness)
 skewness(sod_survey_selected$Compensation_in_USD)
 
-plotNormalHistogram(sod_survey_selected$Compensation_in_USD)
+options(scipen=10000)
+plotNormalHistogram(sod_survey_selected$Compensation_in_USD,
+                    main = "Figure 1: Normal Histogram of Salary Distribution",
+                    xlab="Salary (USD)",
+                    ylab="Number of Respondents")
 
 # Explore the respondents with min or max salary
 sod_survey_selected[which.max(sod_survey_selected$Compensation_in_USD), ]
@@ -152,7 +166,8 @@ sod_survey_selected[which.min(sod_survey_selected$Compensation_in_USD), ]
 
 
 # Feature Selection:
-# From the results below, we can see that variables such as "Age First Code" might not be one of the most influential elements.
+# From the results below, we can see that variables such as "Age First Code"
+# might not be one of the most influential elements.
 # 1. Backward Elimination
 full <- lm(Compensation_in_USD~.,data=sod_survey_selected)
 stepB <- stepAIC(full, direction= "backward", trace=FALSE)
@@ -161,21 +176,40 @@ summary(stepB)
 # 2. Forward Selection
 full_2 <- lm(Compensation_in_USD~., data=sod_survey_selected)
 null <- lm(Compensation_in_USD~1,data=sod_survey_selected)
-stepF <- stepAIC(null, scope=list(lower=null, upper=full), direction= "forward", trace=FALSE)
+stepF <- stepAIC(null, scope=list(lower=null, upper=full), direction= "forward",
+                 trace=FALSE)
 summary(stepF)
 
-
 # Linear Regression:
-# Building a linear model
-model_1 <- lm(log(Compensation_in_USD) ~ Education_Level + OpenSourcer + Years_Coding_Professionally + Work_Hours_Per_Week + language_count + database_count + webframe_count, data = sod_survey_selected)
-# View summary statistics of the model
+# First attempt to remove influential points
+p <- length(model_1$coefficients)
+n <- nrow(model_1$model)
+dffits_crit = 2 * sqrt((p + 1) / (n - p - 1))
+model1_dffits <- dffits(model_1)
+
+# Building model 1
+model_1 <- lm(log(Compensation_in_USD) ~ Education_Level + OpenSourcer +
+                Years_Coding_Professionally + Work_Hours_Per_Week + language_count +
+                database_count + webframe_count, data = sod_survey_selected[-which(abs(model1_dffits) > dffits_crit),])
 summary(model_1)
 
-
 # Testing and Analysis on Model Assumptions:
-plot(model_1, 1) # Testing linearity and constant variance
-plot(model_1, 2) # Testing normality
-plot(model_1, 5) # Check for outliers
+plot(model_1, 1, col=rgb(red=0.2, green=0.2, blue=1.0, alpha=0.1)) # Testing linearity and constant variance
+plot(model_1, 2, col=rgb(red=0.2, green=0.2, blue=1.0, alpha=0.1)) # Testing normality
+plot(model_1, 5, col=rgb(red=0.2, green=0.2, blue=1.0, alpha=0.1)) # Shows no outliers but influential points
+
+# Check for positive variability in salary as the dependent variable
+var(sod_survey_selected$Compensation_in_USD) > 0
+
+# Second attempt to remove influential points
+w <- abs(rstudent(model_1)) < 3 & abs(cooks.distance(model_1)) < 4/nrow(model_1$model)
+
+# Building model 2
+model_2 <- update(model_1, weights=as.numeric(w))
+summary(model_2)
+plot(model_2, 1, col=rgb(red=0.2, green=0.2, blue=1.0, alpha=0.1)) # Testing linearity and constant variance
+plot(model_2, 2, col=rgb(red=0.2, green=0.2, blue=1.0, alpha=0.1)) # Testing normality
+plot(model_2, 5, col=rgb(red=0.2, green=0.2, blue=1.0, alpha=0.1)) # Shows no outliers and no influential points
 
 
 ```
